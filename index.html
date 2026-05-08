@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skydiving Winds Aloft</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 16px;
+            padding: 16px;
+        }
+
+        #map {
+            flex: 1;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar {
+            width: 320px;
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar h1 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: #38bdf8;
+        }
+
+        .location-section {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .location-section h2 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #cbd5e1;
+        }
+
+        .location-info {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .location-info input {
+            width: 100px;
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #f1f5f9;
+            font-size: 12px;
+        }
+
+        .time-controls {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .time-display {
+            font-size: 13px;
+            color: #38bdf8;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .time-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        button {
+            flex: 1;
+            padding: 8px;
+            background: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 150ms;
+        }
+
+        button:hover {
+            background: #0369a1;
+        }
+
+        button:active {
+            background: #075985;
+        }
+
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .status-message {
+            font-size: 12px;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .status-message.success {
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+            border: 1px solid #4ade80;
+        }
+
+        .status-message.error {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+            border: 1px solid #ff6b6b;
+        }
+
+        .winds-section {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            padding: 6px;
+            background: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .winds-table {
+            font-size: 11px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .winds-table th,
+        .winds-table td {
+            padding: 6px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        .winds-table td:nth-child(3),
+        .winds-table td:nth-child(4) {
+            text-align: center;
+        }
+
+        .winds-table th {
+            background: #0f172a;
+            font-weight: 600;
+            color: #38bdf8;
+        }
+
+        .winds-table td {
+            color: #cbd5e1;
+        }
+
+        .winds-table tbody tr.section-label {
+            background: #0f172a;
+            font-weight: 700;
+            color: #94a3b8;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .layers-section {
+            margin-bottom: 20px;
+        }
+
+        .layers-section h2 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #cbd5e1;
+        }
+
+        .layer-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            background: #0f172a;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 150ms;
+        }
+
+        .layer-toggle:hover {
+            background: #334155;
+        }
+
+        .layer-toggle input {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .layer-toggle input:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .layer-label {
+            flex: 1;
+        }
+
+        .color-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .toggle-btn {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            background: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 24px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 150ms;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-btn:hover {
+            background: #0369a1;
+        }
+
+        .map-winds-table {
+            position: absolute;
+            bottom: 80px;
+            left: 16px;
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid rgba(52, 65, 85, 0.5);
+            border-radius: 8px;
+            padding: 12px;
+            color: #cbd5e1;
+            font-size: 11px;
+            z-index: 500;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: none;
+            width: auto;
+            min-width: 320px;
+        }
+
+        .map-winds-columns {
+            display: flex;
+            gap: 24px;
+        }
+
+        .map-winds-column {
+            flex: 1;
+        }
+
+        .map-winds-column h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #38bdf8;
+            margin: 0 0 8px 0;
+            padding: 0;
+        }
+
+        .map-winds-column table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .map-winds-column th,
+        .map-winds-column td {
+            padding: 4px 6px;
+            text-align: center;
+            border-bottom: 1px solid rgba(52, 65, 85, 0.5);
+            white-space: nowrap;
+        }
+
+        .map-winds-column th {
+            background: transparent;
+            font-weight: 600;
+            color: #38bdf8;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .map-winds-column td {
+            color: #cbd5e1;
+        }
+
+        .sidebar {
+            transition: transform 250ms ease-in-out;
+        }
+
+        .sidebar.collapsed {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <button class="toggle-btn" id="toggleBtn">›</button>
+    <div class="container">
+        <div id="map">
+            <div class="map-winds-table" id="mapWindsTable">
+                <div class="map-winds-columns">
+                    <div class="map-winds-column">
+                        <table id="surfaceToFourK">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="map-winds-column">
+                        <table id="fiveKToSeventeenK">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar" id="sidebar">
+            <h1>Winds Aloft</h1>
+
+            <div class="winds-section">
+                <table class="winds-table">
+                    <thead>
+                        <tr>
+                            <th>Alt (ft)</th>
+                            <th>Dir</th>
+                            <th>Spd (kt)</th>
+                            <th>Temp (°C)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="windsTable">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #94a3b8;">Click map to view winds</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="time-controls">
+                <div class="time-display">
+                    <span id="currentTime">--:-- UTC</span>
+                </div>
+                <div class="time-buttons">
+                    <button id="prevHour">← Hour</button>
+                    <button id="nextHour">Hour →</button>
+                </div>
+                <div class="status-message" id="status" style="display: none;"></div>
+            </div>
+
+            <div class="location-section">
+                <h2>Location</h2>
+                <div class="location-info" style="display: flex; gap: 8px; align-items: center;">
+                    <label>Lat: <input type="number" id="latInput" value="41.2002" step="0.0001">°</label>
+                    <label>Lon: <input type="number" id="lonInput" value="-74.6230" step="0.0001">°</label>
+                </div>
+                <button id="updateLocationBtn" style="width: 100%; margin-top: 8px;">Update</button>
+            </div>
+
+            <div class="layers-section">
+                <h2>Layers</h2>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="uppersToggle" checked>
+                    <div class="color-indicator" style="background: #a78bfa;"></div>
+                    <span class="layer-label">Upper Winds</span>
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="canopyToggle" checked>
+                    <div class="color-indicator" style="background: #f97316;"></div>
+                    <span class="layer-label">Canopy Winds</span>
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="compassToggle" checked>
+                    <div class="color-indicator" style="background: #ffffff;"></div>
+                    <span class="layer-label">Compass</span>
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="mapTableToggle" checked>
+                    <div class="color-indicator" style="background: #38bdf8;"></div>
+                    <span class="layer-label">Winds Table</span>
+                </label>
+                <label class="layer-toggle" style="cursor: default; opacity: 0.6;">
+                    <input type="checkbox" checked disabled>
+                    <div class="color-indicator" style="background: #ef4444;"></div>
+                    <span class="layer-label">Surface Wind</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        const CARDINAL_DIRECTIONS = [
+            { name: 'N', angle: 0 },
+            { name: 'NNE', angle: 22.5 },
+            { name: 'NE', angle: 45 },
+            { name: 'ENE', angle: 67.5 },
+            { name: 'E', angle: 90 },
+            { name: 'ESE', angle: 112.5 },
+            { name: 'SE', angle: 135 },
+            { name: 'SSE', angle: 157.5 },
+            { name: 'S', angle: 180 },
+            { name: 'SSW', angle: 202.5 },
+            { name: 'SW', angle: 225 },
+            { name: 'WSW', angle: 247.5 },
+            { name: 'W', angle: 270 },
+            { name: 'WNW', angle: 292.5 },
+            { name: 'NW', angle: 315 },
+            { name: 'NNW', angle: 337.5 }
+        ];
+
+        let map;
+        let markers = {};
+        let currentLat = 41.2002; // Sussex Airport
+        let currentLon = -74.6230; // Sussex Airport
+        let currentTime = new Date();
+        let proxyIndex = 0;
+        let allWindsData = [];
+        let statusTimeout;
+        let isFetching = false;
+        let lastFetchTime = null;
+        let lastFetchLocation = null;
+        let lastFetchHour = null;
+        let compassLayer = null;
+        let forecastCache = null;
+        
+        const compassRadius = 900; // meters
+        const mapLatOffset = -0.007; // positive = north/up, negative = south/down
+
+        function destinationPoint(lat, lon, bearing, distance) {
+            const R = 6371000; // Earth's radius in meters
+            const lat1 = (lat * Math.PI) / 180;
+            const lon1 = (lon * Math.PI) / 180;
+            const bearingRad = (bearing * Math.PI) / 180;
+
+            const lat2 = Math.asin(
+                Math.sin(lat1) * Math.cos(distance / R) +
+                Math.cos(lat1) * Math.sin(distance / R) * Math.cos(bearingRad)
+            );
+
+            const lon2 = lon1 + Math.atan2(
+                Math.sin(bearingRad) * Math.sin(distance / R) * Math.cos(lat1),
+                Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2)
+            );
+
+            return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
+        }
+
+        function drawCompassOverlay(centerLat, centerLon) {
+            if (compassLayer) {
+                map.removeLayer(compassLayer);
+            }
+            compassLayer = L.layerGroup().addTo(map);
+            compassLayer.setZIndex(9999);
+            const radius = compassRadius;
+
+            // Draw circle white with black outline
+            L.circle([centerLat, centerLon], {
+                radius,
+                color: '#000000',
+                weight: 1,
+                fillOpacity: 0.0,
+                interactive: false
+            }).addTo(compassLayer);
+            L.circle([centerLat, centerLon], {
+                radius,
+                color: '#ffffff',
+                weight: 2,
+                fillOpacity: 0.0,
+                interactive: false
+            }).addTo(compassLayer);
+
+            // Draw ticks every 45°
+            for (let deg = 0; deg < 360; deg += 45) {
+                const isMajorTick = deg % 90 === 0;
+                const tickLen = isMajorTick ? 80 : 40;
+                const innerRadius = radius - tickLen / 2;
+                const outerRadius = radius + tickLen / 2;
+
+                const [innerLat, innerLon] = destinationPoint(centerLat, centerLon, deg, innerRadius);
+                const [outerLat, outerLon] = destinationPoint(centerLat, centerLon, deg, outerRadius);
+
+                // Black outline + white foreground
+                L.polyline([[innerLat, innerLon], [outerLat, outerLon]], {
+                    color: '#000000',
+                    weight: isMajorTick ? 3 : 2,
+                    opacity: 1
+                }).addTo(compassLayer);
+                L.polyline([[innerLat, innerLon], [outerLat, outerLon]], {
+                    color: '#ffffff',
+                    weight: isMajorTick ? 2.5 : 1.5,
+                    opacity: 0.9
+                }).addTo(compassLayer);
+
+                // Labels on cardinal directions
+                if (deg % 90 === 0) {
+                    const labelText = (deg + '°').padEnd(4, ' ');
+                    const labelOffset = 120;
+                    const [labelLat, labelLon] = destinationPoint(centerLat, centerLon, deg, radius + labelOffset);
+
+                    L.marker([labelLat, labelLon], {
+                        icon: L.divIcon({
+                            className: 'compass-label',
+                            html: `<div style="color: #ffffff; font-weight: bold; font-size: 12px; text-align: center; position: relative; z-index: 10000;">${labelText}</div>`,
+                            iconSize: [40, 20],
+                            iconAnchor: [20, 10]
+                        })
+                    }).addTo(compassLayer);
+                }
+            }
+        }
+
+        function getCacheKey() {
+            return 'windsAloftCache';
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const cached = localStorage.getItem(getCacheKey());
+                if (!cached) return null;
+                return JSON.parse(cached);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function saveToLocalStorage(data, lat, lon, hour) {
+            try {
+                const cacheData = {
+                    data: data,
+                    lat: lat,
+                    lon: lon,
+                    hour: hour,
+                    timestamp: new Date().getTime()
+                };
+                localStorage.setItem(getCacheKey(), JSON.stringify(cacheData));
+            } catch (e) {
+                // Silently fail if localStorage unavailable
+            }
+        }
+
+        function getArrowGraphic(angle) {
+            angle = (parseInt(angle, 10) + 180) % 360;
+            return `<span style="display:inline-block; transform:rotate(${angle}deg);">🡑</span>`;
+        }
+
+        function initMap() {
+            // Load location from localStorage or browser geolocation
+            loadLocationFromStorage();
+            
+            map = L.map('map').setView([currentLat+mapLatOffset, currentLon], 14);
+            
+            const esriImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '© Esri',
+                maxZoom: 19
+            });
+            
+            const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            });
+            
+            const baseMaps = {
+                'Satellite': esriImagery,
+                'OpenStreetMap': openStreetMap
+            };
+
+            esriImagery.addTo(map);
+            map.zoomControl.remove();
+
+            L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
+
+            // Try to get browser location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        currentLat = lat;
+                        currentLon = lon;
+                        
+                        updateLocation();
+                        map.setView([currentLat+mapLatOffset, currentLon], 14);
+                        drawCompassOverlay(currentLat, currentLon);
+                        saveLocationToStorage();
+                        loadForecast();
+                    },
+                    (error) => {
+                        // Silently fail, use default or cached location
+                        updateLocation();
+                        drawCompassOverlay(currentLat, currentLon);
+                        loadForecast();
+                    }
+                );
+            } else {
+                updateLocation();
+                drawCompassOverlay(currentLat, currentLon);
+                loadForecast();
+            }
+
+            const toggleBtn = document.getElementById('toggleBtn');
+            const sidebar = document.getElementById('sidebar');
+            toggleBtn.addEventListener('click', () => {
+                if (sidebar.style.display === 'none') {
+                    sidebar.style.display = 'block';
+                    toggleBtn.textContent = '‹';
+                    map.invalidateSize();
+                } else {
+                    sidebar.style.display = 'none';
+                    toggleBtn.textContent = '›';
+                    map.invalidateSize();
+                }
+            });
+
+            map.on('dblclick', (e) => {
+                const mapContainer = map.getContainer();
+                if (L.DomUtil.hasClass(mapContainer, 'ruler-map')) return;
+                if (isFetching) return;
+                
+                currentLat = e.latlng.lat;
+                currentLon = e.latlng.lng;
+                updateLocation();
+                drawCompassOverlay(currentLat, currentLon);
+                saveLocationToStorage();
+                
+                loadForecast();
+            });
+
+            document.getElementById('prevHour').addEventListener('click', () => {
+                if (isFetching) return;
+
+                const { start } = getDayBounds(currentTime);
+                const prevTime = new Date(currentTime);
+                prevTime.setHours(prevTime.getHours() - 1);
+
+                if (prevTime <= start) return;
+
+                currentTime = prevTime;
+                loadForecast();
+            });
+
+            document.getElementById('nextHour').addEventListener('click', () => {
+                if (isFetching) return;
+
+                const { end } = getDayBounds(currentTime);
+                const nextTime = new Date(currentTime);
+                nextTime.setHours(nextTime.getHours() + 1);
+
+                if (nextTime > end) return;
+
+                currentTime = nextTime;
+                loadForecast();
+            });
+
+            document.getElementById('updateLocationBtn').addEventListener('click', () => {
+                if (!isFetching) {
+                    const newLat = parseFloat(document.getElementById('latInput').value);
+                    const newLon = parseFloat(document.getElementById('lonInput').value);
+                    
+                    if (isNaN(newLat) || isNaN(newLon) || newLat < -90 || newLat > 90 || newLon < -180 || newLon > 180) {
+                        showStatus('Invalid coordinates', 'error');
+                        return;
+                    }
+
+                    currentLat = newLat;
+                    currentLon = newLon;
+                    updateLocation();
+                    map.setView([currentLat+mapLatOffset, currentLon], 14);
+                    drawCompassOverlay(currentLat, currentLon);
+                    saveLocationToStorage();
+                    loadForecast();
+                }
+            });
+
+            document.getElementById('uppersToggle').addEventListener('change', updateMarkers);
+            document.getElementById('canopyToggle').addEventListener('change', updateMarkers);
+            document.getElementById('compassToggle').addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    drawCompassOverlay(currentLat, currentLon);
+                } else {
+                    if (compassLayer) {
+                        map.removeLayer(compassLayer);
+                        compassLayer = null;
+                    }
+                }
+            });
+            
+            function updateMapTableVisibility() {
+                const mapTable = document.getElementById('mapWindsTable');
+                const visible = document.getElementById('mapTableToggle').checked;
+                mapTable.style.display = visible ? 'block' : 'none';
+            }
+
+            document.getElementById('mapTableToggle').addEventListener('change', updateMapTableVisibility);
+            updateMapTableVisibility();
+        }
+
+        function showStatus(msg, type, permanent = false) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = msg;
+            statusEl.className = `status-message ${type}`;
+            statusEl.style.display = 'block';
+
+            if (statusTimeout) clearTimeout(statusTimeout);
+        }
+        
+        function getDayBounds(date) {
+            const start = new Date(date);
+            start.setHours(0, 0, 0, 0); // 12:00 AM
+
+            const end = new Date(date);
+            end.setHours(24, 0, 0, 0); // 12:00 AM
+
+            return { start, end };
+        }
+
+        function updateButtonStates() {
+            const prevBtn = document.getElementById('prevHour');
+            const nextBtn = document.getElementById('nextHour');
+            const updateBtn = document.getElementById('updateLocationBtn');
+            
+            if (isFetching) {
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                updateBtn.disabled = true;
+            } else {
+                prevBtn.disabled = false;
+                nextBtn.disabled = false;
+                updateBtn.disabled = false;
+            }
+        }
+
+        function getCardinalDirection(degrees) {
+            const normalized = ((degrees + 360) % 360);
+            let closest = CARDINAL_DIRECTIONS[0];
+            let minDiff = Math.abs(normalized - closest.angle);
+
+            for (let dir of CARDINAL_DIRECTIONS) {
+                const diff = Math.abs(normalized - dir.angle);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closest = dir;
+                }
+            }
+            return closest;
+        }
+
+        function updateTimeDisplay(forecastTimeStr, timezone) {
+            if (!forecastTimeStr) {
+                document.getElementById("currentTime").textContent = "---- -- ----";
+                return;
+            }
+
+            // forecastTimeStr is already local to the forecast location when timezone=auto
+            // Example: "2026-05-05T18:00"
+            const [datePart, timePart] = forecastTimeStr.split("T");
+            let [hour, minute] = timePart.split(":").map(Number);
+
+            const ampm = hour >= 12 ? "PM" : "AM";
+            hour = hour % 12 || 12;
+
+            const localTimeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${ampm}`;
+
+            // Optional "valid now / in X min / X min ago"
+            const tz = timezone || "UTC";
+            const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+
+            const [yyyy, mm, dd] = datePart.split("-").map(Number);
+            const [hh, min] = timePart.split(":").map(Number);
+            const validLocal = new Date(yyyy, mm - 1, dd, hh, min, 0);
+
+            const minDiff = Math.round((nowLocal.getTime() - validLocal.getTime()) / 60000);
+
+            let diffString;
+            if (Math.abs(minDiff) <= 5) {
+                diffString = "Valid now";
+            } else if (minDiff > 0) {
+                diffString = `Valid ${minDiff} min ago`;
+            } else {
+                diffString = `Valid in ${Math.abs(minDiff)} min`;
+            }
+
+            document.getElementById("currentTime").textContent = `${localTimeStr} ${diffString}`;
+        }
+
+        function loadLocationFromStorage() {
+            try {
+                const cached = localStorage.getItem('windsAloftLocation');
+                if (cached) {
+                    const location = JSON.parse(cached);
+                    currentLat = location.lat;
+                    currentLon = location.lon;
+                }
+            } catch (e) {
+                // Silently fail, use defaults
+            }
+        }
+
+        function saveLocationToStorage() {
+            try {
+                localStorage.setItem('windsAloftLocation', JSON.stringify({ 
+                    lat: currentLat, 
+                    lon: currentLon, 
+                    timestamp: new Date().getTime() 
+                }));
+            } catch (e) {
+                // Silently fail if localStorage unavailable
+            }
+        }
+
+        function updateLocation() {
+            document.getElementById('latInput').value = currentLat.toFixed(4);
+            document.getElementById('lonInput').value = currentLon.toFixed(4);
+        }
+
+        function metersToFeet(m) { return m * 3.280839895; }
+        function feetToMeters(ft) { return ft / 3.280839895; }
+
+        function lerp(x1, y1, x2, y2, x) {
+            if (x2 === x1) return y1;
+            return y1 + (y2 - y1) * ((x - x1) / (x2 - x1));
+        }
+
+        function lerpDir(h1, d1, h2, d2, h) {
+            let delta = d2 - d1;
+            if (delta > 180) d2 -= 360;
+            if (delta < -180) d2 += 360;
+            const val = lerp(h1, d1, h2, d2, h);
+            return (val + 360) % 360;
+        }
+        
+        function getSelectedHourIndex(hourlyTimes, timezone, selectedTime) {
+            if (!Array.isArray(hourlyTimes) || hourlyTimes.length === 0) return -1;
+
+            const local = new Date(
+                selectedTime.toLocaleString("en-US", { timeZone: timezone || "UTC" })
+            );
+
+            const yyyy = local.getFullYear();
+            const mm = String(local.getMonth() + 1).padStart(2, "0");
+            const dd = String(local.getDate()).padStart(2, "0");
+            const hh = String(local.getHours()).padStart(2, "0");
+
+            const key = `${yyyy}-${mm}-${dd}T${hh}:00`;
+            return hourlyTimes.indexOf(key);
+        }
+        
+        async function fetchForecast(lat, lon) {
+          const PRESSURE_LEVELS = [
+            "1000hPa", "975hPa", "950hPa", "925hPa", "900hPa",
+            "850hPa", "800hPa", "750hPa", "700hPa", "650hPa",
+            "600hPa", "550hPa", "500hPa", "450hPa", "400hPa"
+          ];
+
+          const hourlyVars = [
+            ...PRESSURE_LEVELS.map(l => `geopotential_height_${l}`),
+            ...PRESSURE_LEVELS.map(l => `wind_direction_${l}`),
+            ...PRESSURE_LEVELS.map(l => `wind_speed_${l}`),
+            ...PRESSURE_LEVELS.map(l => `temperature_${l}`)
+          ];
+
+          const params = new URLSearchParams({
+            latitude: String(lat),
+            longitude: String(lon),
+            hourly: hourlyVars.join(","),
+            models: "best_match",
+            forecast_days: "1",
+            timezone: "auto",
+            wind_speed_unit: "kn"
+          });
+
+          const baseUrl = "https://api.open-meteo.com/v1/forecast";
+          const url = `${baseUrl}?${params.toString()}`;
+          const res = await fetch(url);
+          
+          if (!res.ok) throw new Error(`Forecast request failed: HTTP ${res.status}`);
+          return { data: await res.json(), pressureLevels: PRESSURE_LEVELS };
+        }
+
+        function buildModelLevels(data, pressureLevels, idx) {
+            const elevationM = Number(data.elevation) || 0;
+
+            const levels = pressureLevels.map(level => {
+                const geoKey = `geopotential_height_${level}`;
+                const dirKey = `wind_direction_${level}`;
+                const spdKey = `wind_speed_${level}`;
+                const tmpKey = `temperature_${level}`;
+
+                const geopotentialMslM = Number(data.hourly[geoKey][idx]);
+                const heightAglFt = metersToFeet(geopotentialMslM - elevationM);
+                const windDirectionDeg = Number(data.hourly[dirKey][idx]);
+                const windSpeedKt = Number(data.hourly[spdKey][idx]);
+                const windTempC = Number(data.hourly[tmpKey][idx]);
+
+                return {
+                    level,
+                    height_ft: heightAglFt,
+                    wind_direction_deg: windDirectionDeg,
+                    wind_speed_kt: windSpeedKt,
+                    wind_temp_c: windTempC
+                };
+            }).filter(l => Number.isFinite(l.height_ft))
+              .sort((a, b) => a.height_ft - b.height_ft);
+
+            return {
+                time: data.hourly.time[idx],
+                elevation_m: elevationM,
+                levels
+            };
+        }
+
+        function buildRawMaps(modelLevels, data, idx) {
+            const altFtRaw = [];
+            const directionRaw = {};
+            const speedRaw = {};
+            const tempRaw = {};
+
+            modelLevels.levels.forEach(row => {
+                const h = Math.round(row.height_ft);
+                altFtRaw.push(h);
+                directionRaw[h] = row.wind_direction_deg;
+                speedRaw[h] = row.wind_speed_kt;
+                tempRaw[h] = row.wind_temp_c;
+            });
+
+            return { altFtRaw, directionRaw, speedRaw, tempRaw };
+        }
+
+        function buildInterpolatedProfile(raw) {
+            const TARGET_ALT_FT = [];
+            for (let a = 0; a <= 17000; a += 1000) TARGET_ALT_FT.push(a);
+
+            const altFtRawSorted = [...raw.altFtRaw].sort((a, b) => a - b);
+
+            const points = altFtRawSorted.map(h => ({
+                height: h,
+                dir: raw.directionRaw[h],
+                spd: raw.speedRaw[h],
+                tmp: raw.tempRaw[h]
+            }));
+
+            function interpVar(target, key) {
+                const n = points.length;
+
+                if (target <= points[0].height) {
+                    // downward extrapolation from first two levels
+                    const p1 = points[0];
+                    const p2 = points[1];
+                    if (key === "dir") return lerpDir(p1.height, p1.dir, p2.height, p2.dir, target);
+                    return lerp(p1.height, p1[key], p2.height, p2[key], target);
+                }
+
+                for (let i = 0; i < n - 1; i++) {
+                    const p1 = points[i];
+                    const p2 = points[i + 1];
+                    if (target >= p1.height && target <= p2.height) {
+                        if (key === "dir") return lerpDir(p1.height, p1.dir, p2.height, p2.dir, target);
+                        return lerp(p1.height, p1[key], p2.height, p2[key], target);
+                    }
+                }
+
+                // above top: clamp
+                return points[n - 1][key];
+            }
+
+            const direction = {};
+            const speed = {};
+            const temp = {};
+
+            TARGET_ALT_FT.forEach(a => {
+                direction[a] = Math.round(interpVar(a, "dir"));
+                speed[a] = Math.round(interpVar(a, "spd"));
+                temp[a] = Math.round(interpVar(a, "tmp"));
+            });
+
+            return { altFt: TARGET_ALT_FT, direction, speed, temp };
+        }
+
+        async function loadForecast() {
+            isFetching = true;
+            updateButtonStates();
+
+            try {
+                let usedCache = true;
+                
+                if (!forecastCache) {
+                    forecastCache = loadForecastCache();
+                }
+
+                showStatus("Getting conditions…", "success");
+
+                // 1) Ensure we have a 24 hour forecast cached for this location
+                if (shouldRefetchForecast(currentLat, currentLon, forecastCache)) {
+                    const { data, pressureLevels } = await fetchForecast(currentLat, currentLon);
+                    
+                    forecastCache = {
+                        data,
+                        pressureLevels,
+                        lat: currentLat,
+                        lon: currentLon
+                    };
+                    
+                    saveForecastCache(data, pressureLevels, currentLat, currentLon);
+                    usedCache = false;
+                }
+
+                const { data, pressureLevels } = forecastCache;
+
+                // 2) Pick the selected hour index from the 24-hour forecast (location's timezone)
+                const idx = getSelectedHourIndex(data.hourly.time, data.timezone, currentTime);
+
+                if (idx === -1) {
+                    throw new Error("Current hour not found in forecast data");
+                }
+
+                const forecastTimeStr = data.hourly.time[idx];
+                lastFetchHour = parseInt(forecastTimeStr.slice(11, 13), 10);
+                updateTimeDisplay(forecastTimeStr, data.timezone);
+
+                // 3) Build model levels and interpolated vertical profile for that hour
+                const modelLevels = buildModelLevels(data, pressureLevels, idx);
+                const raw = buildRawMaps(modelLevels);
+                const interp = buildInterpolatedProfile(raw);
+
+                // 4) Populate allWindsData (0–17k ft) from the interpolated profile
+                allWindsData = [];
+                interp.altFt.forEach((alt) => {
+                    if (alt <= 17000) {
+                        allWindsData.push({
+                            altitude: alt,
+                            direction: interp.direction[alt] ?? 0,
+                            speed: interp.speed[alt] ?? 0,
+                            temp: interp.temp[alt] ?? null
+                        });
+                    }
+                });
+                allWindsData.sort((a, b) => a.altitude - b.altitude);
+
+                lastFetchTime = new Date(forecastCache.fetchedAt || Date.now());
+                lastFetchLocation = { lat: currentLat, lon: currentLon };
+
+                saveToLocalStorage(allWindsData, currentLat, currentLon, lastFetchHour);
+
+                // 5) Update UI
+                updateWindsTable();
+                updateMarkers();
+
+                const fetchTimeStr = lastFetchTime.toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true
+                });
+                
+                showStatus(
+                    usedCache ? `Cached at ${fetchTimeStr}` : `Fetched at ${fetchTimeStr}`,
+                    "success",
+                    true
+                );
+
+            } catch (error) {
+                console.error(error);
+                showStatus("Error: " + error.message, "error", true);
+            } finally {
+                isFetching = false;
+                updateButtonStates();
+            }
+        }
+
+        function shouldRefetchForecast(lat, lon, cachedForecast = forecastCache) {
+            if (!cachedForecast) return true;
+
+            const latMatch = Math.abs(cachedForecast.lat - lat) < 0.0001;
+            const lonMatch = Math.abs(cachedForecast.lon - lon) < 0.0001;
+            
+            if (!latMatch || !lonMatch) return true;
+            
+            const ageMs = Date.now() - cachedForecast.fetchedAt;
+            const oneHourMs = 60 * 60 * 1000;
+            
+            if (ageMs >= oneHourMs) return true;
+
+            const data = cachedForecast.data;
+            const times = data?.hourly?.time;
+            
+            if (!Array.isArray(times) || times.length === 0) return true;
+
+            const idx = getSelectedHourIndex(times, data.timezone, currentTime);
+
+            return idx === -1;
+        }
+        
+        function getForecastCacheKey() {
+            return "windsAloftForecastCache";
+        }
+
+        function loadForecastCache() {
+            try {
+                const cached = localStorage.getItem(getForecastCacheKey());
+                if (!cached) return null;
+                return JSON.parse(cached);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function saveForecastCache(data, pressureLevels, lat, lon) {
+            try {
+                const cacheData = {
+                    data,
+                    pressureLevels,
+                    lat,
+                    lon,
+                    fetchedAt: Date.now()
+                };
+                localStorage.setItem(getForecastCacheKey(), JSON.stringify(cacheData));
+            } catch (e) {
+                // Silently fail if localStorage unavailable
+            }
+        }
+
+        function updateWindsTable() {
+            const tbody = document.getElementById('windsTable');
+            tbody.innerHTML = '';
+
+            allWindsData.forEach((wind, idx) => {
+                const dir = getCardinalDirection(wind.direction);
+                const row = document.createElement('tr');
+                const alt = wind.altitude === 0 ? 'Surface' : Math.round(wind.altitude);
+                row.innerHTML = `
+                    <td>${alt}</td>
+                    <td>${Math.round(wind.direction)}° ${dir.name}</td>
+                    <td>${Math.round(wind.speed)}</td>
+                    <td>${wind.temp !== null ? Math.round(wind.temp) : '--'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Update map wind table
+            updateMapWindsTable();
+        }
+
+        function updateMapWindsTable() {
+            const surfaceTable = document.querySelector('#surfaceToFourK tbody');
+            const upperTable = document.querySelector('#fiveKToSeventeenK tbody');
+            
+            surfaceTable.innerHTML = '';
+            upperTable.innerHTML = '';
+
+            // Surface to 4K
+            allWindsData.forEach((wind) => {
+                if (wind.altitude <= 4000) {
+                    const row = document.createElement('tr');
+                    const alt = wind.altitude === 0 ? 'Sfc' : (Math.round(wind.altitude / 1000) + ' K');
+                    const dir = Math.round(wind.direction);
+                    const spd = Math.round(wind.speed);
+                    row.innerHTML = `
+                        <td>${alt}</td>
+                        <td>${dir}° @ ${spd} kts</td>
+                    `;
+                    surfaceTable.appendChild(row);
+                }
+            });
+
+            // 5K to 17K - specific altitudes only
+            const targetAltitudes = [5000, 7000, 9000, 11000, 13000];
+            targetAltitudes.forEach((targetAlt) => {
+                const wind = allWindsData.find(w => Math.abs(w.altitude - targetAlt) < 500);
+                if (wind) {
+                    const row = document.createElement('tr');
+                    const alt = (Math.round(wind.altitude / 1000) + ' K');
+                    const dir = Math.round(wind.direction);
+                    const spd = Math.round(wind.speed);
+                    row.innerHTML = `
+                        <td>${alt}</td>
+                        <td>${dir}° @ ${spd} kts</td>
+                    `;
+                    upperTable.appendChild(row);
+                }
+            });
+        }
+
+        function formatAltitudeLabel(altitude) {
+            if (altitude === 'Surface') return 'S';
+            const alt = Math.round(altitude);
+            if (alt >= 1000) {
+                return (alt / 1000).toFixed(0) + 'K';
+            }
+            return alt.toString();
+        }
+
+        function updateMarkers() {
+            Object.values(markers).forEach(layer => {
+                if (layer instanceof L.LayerGroup) {
+                    map.removeLayer(layer);
+                }
+            });
+            markers = {};
+
+            const uppersVisible = document.getElementById('uppersToggle').checked;
+            const canopyVisible = document.getElementById('canopyToggle').checked;
+
+            function getAltitudeRing(altitude) {
+                const step = Math.max(1, Math.round(altitude / 1000));
+                const minStep = 1;
+                const maxStep = 17;
+
+                if (altitude <= 4000) {
+                    // Looser scaling for 1–4K: stretch this band closer to the outer part of the range
+                    const canopyMinStep = 1;
+                    const canopyMaxStep = 4;
+                    const canopyNormalized = (step - canopyMinStep) / (canopyMaxStep - canopyMinStep);
+                    return 0.3 + canopyNormalized * 0.7; // 0.3–1.0 for 0–4K
+                } else {
+                    // Original scaling for >4K preserved
+                    const normalized = (step - minStep) / (maxStep - minStep);
+                    return 0.2 + normalized * 0.8;
+                }
+            }
+
+            if (uppersVisible) {
+                const uppersGroup = L.layerGroup();
+                const upperAltitudes = allWindsData.filter(w => w.altitude < 14000 && w.altitude > 4000).map(w => w.altitude).sort((a, b) => a - b);
+                const altitudesOnMap = upperAltitudes.filter((alt, idx) => idx % 2 === 0);
+                allWindsData.forEach((wind) => {
+                    if (wind.altitude > 4000 && altitudesOnMap.includes(wind.altitude)) {
+                        const ringScale = getAltitudeRing(wind.altitude);
+                        const baseDistance = 3000;
+                        const distance = baseDistance * ringScale;
+                        const windDir = wind.direction;
+                        const position = getOffsetPosition(currentLat, currentLon, windDir, distance);
+                        const arrowDir = (windDir + 180) % 360;
+                        const marker = createWindArrow(position.lat, position.lon, arrowDir, wind.speed, '#a78bfa', Math.round(wind.altitude), wind.speed);
+                        uppersGroup.addLayer(marker);
+                    }
+                });
+                uppersGroup.addTo(map);
+                markers.uppers = uppersGroup;
+            }
+
+            if (canopyVisible) {
+                const canopyGroup = L.layerGroup();
+                allWindsData.forEach((wind) => {
+                    if (wind.altitude > 0 && wind.altitude <= 4000) {
+                        const ringScale = getAltitudeRing(wind.altitude);
+                        const baseDistance = 1000;
+                        const distance = baseDistance * ringScale;
+                        const windDir = wind.direction;
+                        const position = getOffsetPosition(currentLat, currentLon, windDir, distance);
+                        const arrowDir = (windDir + 180) % 360;
+                        const marker = createWindArrow(position.lat, position.lon, arrowDir, wind.speed, '#f97316', Math.round(wind.altitude), wind.speed);
+                        canopyGroup.addLayer(marker);
+                    }
+                });
+                canopyGroup.addTo(map);
+                markers.canopy = canopyGroup;
+            }
+
+            const surfaceGroup = L.layerGroup();
+            const surfaceWind = allWindsData[0];
+            if (surfaceWind) {
+                const windDir = surfaceWind.direction;
+                const position = getOffsetPosition(currentLat, currentLon, windDir, 0);
+                //const arrowDir = (windDir + 180) % 360;
+                const marker = createWindArrow(position.lat, position.lon, windDir, surfaceWind.speed, '#ef4444', 'Surface', surfaceWind.speed);
+                surfaceGroup.addLayer(marker);
+            }
+            surfaceGroup.addTo(map);
+            markers.surface = surfaceGroup;
+        }
+
+        function getOffsetPosition(lat, lon, bearing, distanceMeters) {
+            const R = 6371000;
+            const lat1 = (lat * Math.PI) / 180;
+            const lon1 = (lon * Math.PI) / 180;
+            const bearingRad = (bearing * Math.PI) / 180;
+
+            const lat2 = Math.asin(
+                Math.sin(lat1) * Math.cos(distanceMeters / R) +
+                Math.cos(lat1) * Math.sin(distanceMeters / R) * Math.cos(bearingRad)
+            );
+
+            const lon2 =
+                lon1 +
+                Math.atan2(
+                    Math.sin(bearingRad) * Math.sin(distanceMeters / R) * Math.cos(lat1),
+                    Math.cos(distanceMeters / R) - Math.sin(lat1) * Math.sin(lat2)
+                );
+
+            return {
+                lat: (lat2 * 180) / Math.PI,
+                lon: (lon2 * 180) / Math.PI
+            };
+        }
+
+        function createWindArrow(lat, lon, direction, speed, color, label, speedValue) {
+            const arrowSize = 22;//40;
+            const canvas = document.createElement('canvas');
+            canvas.width = arrowSize * 2.5;
+            canvas.height = arrowSize * 3.2;
+
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2 - 10);
+
+            ctx.rotate((direction * Math.PI) / 180);
+
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(0, -arrowSize);
+                                  //0.3
+            ctx.lineTo(-arrowSize * 0.5, arrowSize * 0.5);
+            ctx.lineTo(0, arrowSize * 0.3);
+                                 //0.3
+            ctx.lineTo(arrowSize * 0.5, arrowSize * 0.5);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.rotate(-(direction * Math.PI) / 180);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const altLabel = formatAltitudeLabel(label);
+            ctx.strokeText(altLabel, 0, 0);
+            ctx.fillText(altLabel, 0, 0);
+            ctx.restore();
+
+            // Speed label at bottom
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2 + arrowSize * 0.4);  // arrow 
+            ctx.font = 'bold 9px Arial';
+            ctx.strokeText(Math.round(speed) + ' kts', 0, 0/*arrowSize + 6*/);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(Math.round(speed) + ' kts', 0, 0/*arrowSize + 6*/);
+
+            ctx.restore();
+
+            const icon = L.icon({
+                iconUrl: canvas.toDataURL(),
+                iconSize: [canvas.width, canvas.height],
+                iconAnchor: [canvas.width / 2, canvas.height / 2],
+                popupAnchor: [0, -arrowSize]
+            });
+
+            const oppositeDir = (direction + 180) % 360;
+            const originDir = getCardinalDirection(oppositeDir);
+            return L.marker([lat, lon], { icon, alt: label, interactive: false }).bindTooltip(
+                `<strong>${label} ft</strong><br>Wind from: ${originDir.name} (${Math.round(oppositeDir)}°)<br>Speed: ${Math.round(speed)} kt`
+            );
+        }
+
+        window.addEventListener('load', initMap);
+    </script>
+</body>
+</html>
