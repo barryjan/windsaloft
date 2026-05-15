@@ -1287,7 +1287,7 @@
                 const minStep = 1;
                 const maxStep = 17;
 
-                if (altitude <= 4000) {
+                if (altitude <= 4000) {    
                     // Looser scaling for 1–4K: stretch this band closer to the outer part of the range
                     const canopyMinStep = 1;
                     const canopyMaxStep = 4;
@@ -1337,7 +1337,7 @@
                 allWindsData.forEach((wind) => {
                     if (wind.altitude > 0 && wind.altitude <= 4000) {
                         const ringScale = getAltitudeRing(wind.altitude);
-                        const baseDistance = getZoomScaledDistance(1000);
+                        const baseDistance = getZoomScaledDistance(1200);
                         const distance = baseDistance * ringScale;
                         const windDir = wind.direction;
                         const position = getOffsetPosition(currentLat, currentLon, windDir, distance);
