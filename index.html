@@ -396,7 +396,12 @@
                     <label>Lat: <input type="number" id="latInput" value="41.2002" step="0.0001">°</label>
                     <label>Lon: <input type="number" id="lonInput" value="-74.6230" step="0.0001">°</label>
                 </div>
-                <button id="updateLocationBtn" style="width: 100%; margin-top: 8px;">Update</button>
+                
+                <!--<button id="updateLocationBtn" style="width: 100%; margin-top: 8px;">Update</button>-->
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button id="updateLocationBtn" style="flex: 1;">Update</button>
+                    <button id="getLocationBtn" style="flex: 1;">Get Location</button>
+                </div>
             </div>
 
             <div class="layers-section">
@@ -420,6 +425,11 @@
                     <input type="checkbox" id="mapTableToggle" checked>
                     <div class="color-indicator" style="background: #38bdf8;"></div>
                     <span class="layer-label">Winds Table</span>
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="speedLabelToggle" checked>
+                    <div class="color-indicator" style="background: #22c55e;"></div>
+                    <span class="layer-label">Speed Labels</span>
                 </label>
                 <label class="layer-toggle" style="cursor: default; opacity: 0.6;">
                     <input type="checkbox" checked disabled>
@@ -451,10 +461,10 @@
             { name: 'NNW', angle: 337.5 }
         ];
 
-        let map;
+        let map = null;
         let markers = {};
-        let currentLat = 41.2002; // Sussex Airport
-        let currentLon = -74.6230; // Sussex Airport
+        let currentLat = null;
+        let currentLon = null;
         let currentTime = new Date();
         let proxyIndex = 0;
         let allWindsData = [];
@@ -467,6 +477,7 @@
         let forecastCache = null;
         
         const compassRadius = 900; // meters
+        const defaultZoom = 14
         const mapLatOffset = -0.007; // positive = north/up, negative = south/down
 
         function destinationPoint(lat, lon, bearing, distance) {
@@ -494,7 +505,10 @@
             }
             compassLayer = L.layerGroup().addTo(map);
             compassLayer.setZIndex(9999);
-            const radius = compassRadius;
+
+            const zoom = map.getZoom();
+            const scale = Math.pow(2.5, defaultZoom - zoom);
+            const radius = Math.max(compassRadius * scale, compassRadius);
 
             // Draw circle white with black outline
             L.circle([centerLat, centerLon], {
@@ -587,11 +601,9 @@
         }
 
         function initMap() {
-            // Load location from localStorage or browser geolocation
-            loadLocationFromStorage();
-            
-            map = L.map('map').setView([currentLat+mapLatOffset, currentLon], 14);
-            
+            loadLocation();
+            map = L.map('map').setView([currentLat+mapLatOffset, currentLon], defaultZoom);
+
             const esriImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 attribution: '© Esri',
                 maxZoom: 19
@@ -609,37 +621,19 @@
 
             esriImagery.addTo(map);
             map.zoomControl.remove();
+            
+            map.on('zoomend', () => {
+                updateMarkers();
+
+                if (document.getElementById('compassToggle').checked) {
+                    drawCompassOverlay(currentLat, currentLon);
+                }
+            });
 
             L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
 
-            // Try to get browser location
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
-                        
-                        currentLat = lat;
-                        currentLon = lon;
-                        
-                        updateLocation();
-                        map.setView([currentLat+mapLatOffset, currentLon], 14);
-                        drawCompassOverlay(currentLat, currentLon);
-                        saveLocationToStorage();
-                        loadForecast();
-                    },
-                    (error) => {
-                        // Silently fail, use default or cached location
-                        updateLocation();
-                        drawCompassOverlay(currentLat, currentLon);
-                        loadForecast();
-                    }
-                );
-            } else {
-                updateLocation();
-                drawCompassOverlay(currentLat, currentLon);
-                loadForecast();
-            }
+            drawCompassOverlay(currentLat, currentLon);
+            loadForecast();
 
             const toggleBtn = document.getElementById('toggleBtn');
             const sidebar = document.getElementById('sidebar');
@@ -664,8 +658,7 @@
                 currentLon = e.latlng.lng;
                 updateLocation();
                 drawCompassOverlay(currentLat, currentLon);
-                saveLocationToStorage();
-                
+
                 loadForecast();
             });
 
@@ -708,15 +701,35 @@
                     currentLat = newLat;
                     currentLon = newLon;
                     updateLocation();
-                    map.setView([currentLat+mapLatOffset, currentLon], 14);
+                    map.setView([currentLat+mapLatOffset, currentLon], defaultZoom);
                     drawCompassOverlay(currentLat, currentLon);
                     saveLocationToStorage();
                     loadForecast();
                 }
             });
 
+            document.getElementById('getLocationBtn').addEventListener('click', () => {
+                if (!navigator.geolocation || isFetching) return;
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLat = position.coords.latitude;
+                        currentLon = position.coords.longitude;
+
+                        updateLocation();
+                        map.setView([currentLat + mapLatOffset, currentLon], defaultZoom);
+                        drawCompassOverlay(currentLat, currentLon);
+                        loadForecast();
+                    },
+                    () => {
+                        showStatus('Unable to get current location', 'error');
+                    }
+                );
+            });
+
             document.getElementById('uppersToggle').addEventListener('change', updateMarkers);
             document.getElementById('canopyToggle').addEventListener('change', updateMarkers);
+            document.getElementById('speedLabelToggle').addEventListener('change', updateMarkers);
             document.getElementById('compassToggle').addEventListener('change', (e) => {
                 if (e.target.checked) {
                     drawCompassOverlay(currentLat, currentLon);
@@ -727,7 +740,7 @@
                     }
                 }
             });
-            
+
             function updateMapTableVisibility() {
                 const mapTable = document.getElementById('mapWindsTable');
                 const visible = document.getElementById('mapTableToggle').checked;
@@ -826,7 +839,7 @@
             document.getElementById("currentTime").textContent = `${localTimeStr} ${diffString}`;
         }
 
-        function loadLocationFromStorage() {
+        function loadLocation() {
             try {
                 const cached = localStorage.getItem('windsAloftLocation');
                 if (cached) {
@@ -835,25 +848,41 @@
                     currentLon = location.lon;
                 }
             } catch (e) {
-                // Silently fail, use defaults
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            currentLat = position.coords.latitude;
+                            currentLon = position.coords.longitude;
+                            updateLocation();
+                        },
+                        () => {
+                            // Sussex Airport
+                            currentLat = 41.2002;
+                            currentLon = -74.6230;
+                            updateLocation(false);
+                        }
+                    );
+                }
             }
+
+            updateLocation();
         }
 
-        function saveLocationToStorage() {
-            try {
-                localStorage.setItem('windsAloftLocation', JSON.stringify({ 
-                    lat: currentLat, 
-                    lon: currentLon, 
-                    timestamp: new Date().getTime() 
-                }));
-            } catch (e) {
-                // Silently fail if localStorage unavailable
-            }
-        }
-
-        function updateLocation() {
+        function updateLocation(saveToStorage = true) {
             document.getElementById('latInput').value = currentLat.toFixed(4);
             document.getElementById('lonInput').value = currentLon.toFixed(4);
+
+            if (saveToStorage) {
+                try {
+                    localStorage.setItem('windsAloftLocation', JSON.stringify({
+                        lat: currentLat,
+                        lon: currentLon,
+                        timestamp: new Date().getTime()
+                    }));
+                } catch (e) {
+                    // Silently fail if localStorage unavailable
+                }
+            }
         }
 
         function metersToFeet(m) { return m * 3.280839895; }
@@ -1241,6 +1270,17 @@
 
             const uppersVisible = document.getElementById('uppersToggle').checked;
             const canopyVisible = document.getElementById('canopyToggle').checked;
+            
+            function getZoomScaledDistance(baseDistance) {
+                const zoom = map.getZoom();
+
+                // defaultZoom = current reference zoom
+                // zooming in => smaller distances
+                // zooming out => larger distances
+                const scale = Math.pow(2, defaultZoom - zoom);
+
+                return baseDistance * scale;
+            }
 
             function getAltitudeRing(altitude) {
                 const step = Math.max(1, Math.round(altitude / 1000));
@@ -1262,17 +1302,29 @@
 
             if (uppersVisible) {
                 const uppersGroup = L.layerGroup();
-                const upperAltitudes = allWindsData.filter(w => w.altitude < 14000 && w.altitude > 4000).map(w => w.altitude).sort((a, b) => a - b);
+                const upperAltitudes = allWindsData
+                    .filter(w => w.altitude < 14000 && w.altitude >= 7000)
+                    .map(w => w.altitude)
+                    .sort((a, b) => a - b);
                 const altitudesOnMap = upperAltitudes.filter((alt, idx) => idx % 2 === 0);
+                
                 allWindsData.forEach((wind) => {
                     if (wind.altitude > 4000 && altitudesOnMap.includes(wind.altitude)) {
                         const ringScale = getAltitudeRing(wind.altitude);
-                        const baseDistance = 3000;
+                        const baseDistance = getZoomScaledDistance(2500);
                         const distance = baseDistance * ringScale;
                         const windDir = wind.direction;
                         const position = getOffsetPosition(currentLat, currentLon, windDir, distance);
                         const arrowDir = (windDir + 180) % 360;
-                        const marker = createWindArrow(position.lat, position.lon, arrowDir, wind.speed, '#a78bfa', Math.round(wind.altitude), wind.speed);
+                        const marker = createWindArrow(
+                            position.lat, 
+                            position.lon, 
+                            arrowDir, 
+                            wind.speed, 
+                            '#a78bfa', 
+                            Math.round(wind.altitude), 
+                            wind.speed
+                        );
                         uppersGroup.addLayer(marker);
                     }
                 });
@@ -1285,12 +1337,20 @@
                 allWindsData.forEach((wind) => {
                     if (wind.altitude > 0 && wind.altitude <= 4000) {
                         const ringScale = getAltitudeRing(wind.altitude);
-                        const baseDistance = 1000;
+                        const baseDistance = getZoomScaledDistance(1000);
                         const distance = baseDistance * ringScale;
                         const windDir = wind.direction;
                         const position = getOffsetPosition(currentLat, currentLon, windDir, distance);
                         const arrowDir = (windDir + 180) % 360;
-                        const marker = createWindArrow(position.lat, position.lon, arrowDir, wind.speed, '#f97316', Math.round(wind.altitude), wind.speed);
+                        const marker = createWindArrow(
+                            position.lat, 
+                            position.lon, 
+                            arrowDir, 
+                            wind.speed, 
+                            '#f97316', 
+                            Math.round(wind.altitude), 
+                            wind.speed
+                        );
                         canopyGroup.addLayer(marker);
                     }
                 });
@@ -1376,15 +1436,15 @@
             ctx.fillText(altLabel, 0, 0);
             ctx.restore();
 
-            // Speed label at bottom
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2 + arrowSize * 0.4);  // arrow 
-            ctx.font = 'bold 9px Arial';
-            ctx.strokeText(Math.round(speed) + ' kts', 0, 0/*arrowSize + 6*/);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(Math.round(speed) + ' kts', 0, 0/*arrowSize + 6*/);
-
-            ctx.restore();
+            if (document.getElementById('speedLabelToggle')?.checked) {
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2 + arrowSize * 0.4);  // arrow 
+                ctx.font = 'bold 9px Arial';
+                ctx.strokeText(Math.round(speed) + ' kts', 0, 0/*arrowSize + 6*/);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(Math.round(speed) + ' kts', 0, 0/*arrowSize + 6*/);
+                ctx.restore();
+            }
 
             const icon = L.icon({
                 iconUrl: canvas.toDataURL(),
@@ -1396,7 +1456,7 @@
             const oppositeDir = (direction + 180) % 360;
             const originDir = getCardinalDirection(oppositeDir);
             return L.marker([lat, lon], { icon, alt: label, interactive: false }).bindTooltip(
-                `<strong>${label} ft</strong><br>Wind from: ${originDir.name} (${Math.round(oppositeDir)}°)<br>Speed: ${Math.round(speed)} kt`
+                `<strong>${Math.round(oppositeDir)}° (${originDir.name}) @ ${Math.round(speed)} kt</strong>`
             );
         }
 
