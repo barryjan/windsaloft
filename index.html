@@ -508,7 +508,7 @@
 
             const zoom = map.getZoom();
             const scale = Math.pow(2.0, defaultZoom - zoom);
-            const radius = Math.max(Math.min(compassRadius * scale, compassRadius * 5), compassRadius);
+            const radius = Math.max(Math.min(compassRadius * scale, compassRadius * 5), compassRadius / 2);
 
             // Draw circle white with black outline
             L.circle([centerLat, centerLon], {
@@ -1273,10 +1273,9 @@
             
             function getZoomScaledDistance(baseDistance) {
                 const zoom = map.getZoom();
-
                 const scale = Math.pow(2, defaultZoom - zoom);
                 const scaledDistance = baseDistance * scale;
-                return Math.max(baseDistance, Math.min(scaledDistance, baseDistance * 1.2));
+                return Math.max(scaledDistance, baseDistance / 3);
             }
 
             function getAltitudeRing(altitude) {
