@@ -507,8 +507,8 @@
             compassLayer.setZIndex(9999);
 
             const zoom = map.getZoom();
-            const scale = Math.pow(2.5, defaultZoom - zoom);
-            const radius = Math.max(compassRadius * scale, compassRadius);
+            const scale = Math.pow(2.0, defaultZoom - zoom);
+            const radius = Math.max(Math.min(compassRadius * scale, compassRadius * 5), compassRadius);
 
             // Draw circle white with black outline
             L.circle([centerLat, centerLon], {
@@ -1274,12 +1274,9 @@
             function getZoomScaledDistance(baseDistance) {
                 const zoom = map.getZoom();
 
-                // defaultZoom = current reference zoom
-                // zooming in => smaller distances
-                // zooming out => larger distances
                 const scale = Math.pow(2, defaultZoom - zoom);
-
-                return baseDistance * scale;
+                const scaledDistance = baseDistance * scale;
+                return Math.max(baseDistance, scaledDistance);
             }
 
             function getAltitudeRing(altitude) {
@@ -1287,7 +1284,7 @@
                 const minStep = 1;
                 const maxStep = 17;
 
-                if (altitude <= 4000) {    
+                if (altitude <= 4000) {
                     // Looser scaling for 1–4K: stretch this band closer to the outer part of the range
                     const canopyMinStep = 1;
                     const canopyMaxStep = 4;
@@ -1310,8 +1307,9 @@
                 
                 allWindsData.forEach((wind) => {
                     if (wind.altitude > 4000 && altitudesOnMap.includes(wind.altitude)) {
-                        const ringScale = getAltitudeRing(wind.altitude);
-                        const baseDistance = getZoomScaledDistance(2500);
+                        const ringOffset = 0.025;
+                        const ringScale = getAltitudeRing(wind.altitude) + ringOffset; 
+                        const baseDistance = getZoomScaledDistance(2800);
                         const distance = baseDistance * ringScale;
                         const windDir = wind.direction;
                         const position = getOffsetPosition(currentLat, currentLon, windDir, distance);
