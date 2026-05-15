@@ -1276,7 +1276,7 @@
 
                 const scale = Math.pow(2, defaultZoom - zoom);
                 const scaledDistance = baseDistance * scale;
-                return Math.max(baseDistance, scaledDistance);
+                return Math.max(baseDistance, Math.min(scaledDistance, baseDistance * 1.2));
             }
 
             function getAltitudeRing(altitude) {
