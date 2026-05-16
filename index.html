@@ -434,7 +434,7 @@
                 <label class="layer-toggle">
                     <input type="checkbox" id="speedLabelToggle" checked>
                     <div class="color-indicator" style="background: #22c55e;"></div>
-                    <span class="layer-label">Speed Labels</span>
+                    <span class="layer-label">Speed Label</span>
                 </label>
                 <label class="layer-toggle" style="cursor: default; opacity: 0.6;">
                     <input type="checkbox" checked disabled>
@@ -1243,7 +1243,7 @@
                 const alt = wind.altitude === 0 ? 'Surface' : Math.round(wind.altitude);
                 row.innerHTML = `
                     <td>${alt}</td>
-                    <td>${Math.round(wind.direction)}° ${dir.name}</td>
+                    <td>${Math.round(wind.direction)}° ${getArrowGraphic(wind.direction)} ${dir.name}</td>
                     <td>${Math.round(wind.speed)}</td>
                     <td>${wind.temp !== null ? Math.round(wind.temp) : '--'}</td>
                 `;
@@ -1252,6 +1252,11 @@
 
             // Update map wind table
             updateMapWindsTable();
+        }
+
+        function getArrowGraphic(angle) {
+            angle = (parseInt(angle, 10) + 180) % 360;
+            return `<span style="display:inline-block; transform:rotate(${angle}deg); margin:0 4px; line-height:1; vertical-align:middle;">↑</span>`;
         }
 
         function updateMapWindsTable() {
