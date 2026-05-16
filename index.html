@@ -28,6 +28,7 @@
         #map {
             flex: 1;
             border-radius: 8px;
+            position: relative;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
 
@@ -270,7 +271,8 @@
         .map-winds-table {
             position: absolute;
             bottom: 80px;
-            left: 16px;
+            left: 50%;
+            transform: translateX(-50%);
             background: rgba(30, 41, 59, 0.85);
             border: 1px solid rgba(52, 65, 85, 0.5);
             border-radius: 8px;
@@ -703,7 +705,6 @@
                     updateLocation();
                     map.setView([currentLat+mapLatOffset, currentLon], defaultZoom);
                     drawCompassOverlay(currentLat, currentLon);
-                    saveLocationToStorage();
                     loadForecast();
                 }
             });
