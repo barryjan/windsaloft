@@ -510,7 +510,7 @@
 
             const zoom = map.getZoom();
             const scale = Math.pow(2.0, defaultZoom - zoom);
-            const radius = Math.max(Math.min(compassRadius * scale, compassRadius * 5), compassRadius / 3);
+            const radius = Math.max(Math.min(compassRadius * scale, compassRadius), compassRadius / 3);
 
             // Draw circle white with black outline
             L.circle([centerLat, centerLon], {
@@ -623,7 +623,8 @@
 
             esriImagery.addTo(map);
             map.zoomControl.remove();
-            
+            applyLayerSettings();
+
             map.on('zoomend', () => {
                 updateMarkers();
 
@@ -634,7 +635,10 @@
 
             L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
 
-            drawCompassOverlay(currentLat, currentLon);
+            if (document.getElementById('compassToggle').checked) {
+                drawCompassOverlay(currentLat, currentLon);
+            }
+            
             loadForecast();
 
             const toggleBtn = document.getElementById('toggleBtn');
@@ -728,9 +732,21 @@
                 );
             });
 
-            document.getElementById('uppersToggle').addEventListener('change', updateMarkers);
-            document.getElementById('canopyToggle').addEventListener('change', updateMarkers);
-            document.getElementById('speedLabelToggle').addEventListener('change', updateMarkers);
+            document.getElementById('uppersToggle').addEventListener('change', () => {
+                saveLayerSettings();
+                updateMarkers();
+            });
+
+            document.getElementById('canopyToggle').addEventListener('change', () => {
+                saveLayerSettings();
+                updateMarkers();
+            });
+
+            document.getElementById('speedLabelToggle').addEventListener('change', () => {
+                saveLayerSettings();
+                updateMarkers();
+            });
+
             document.getElementById('compassToggle').addEventListener('change', (e) => {
                 if (e.target.checked) {
                     drawCompassOverlay(currentLat, currentLon);
@@ -740,6 +756,7 @@
                         compassLayer = null;
                     }
                 }
+                saveLayerSettings();
             });
 
             function updateMapTableVisibility() {
@@ -748,7 +765,10 @@
                 mapTable.style.display = visible ? 'block' : 'none';
             }
 
-            document.getElementById('mapTableToggle').addEventListener('change', updateMapTableVisibility);
+            document.getElementById('mapTableToggle').addEventListener('change', () => {
+                updateMapTableVisibility();
+                saveLayerSettings();
+            });
             updateMapTableVisibility();
         }
 
@@ -1223,7 +1243,7 @@
             allWindsData.forEach((wind) => {
                 if (wind.altitude <= 4000) {
                     const row = document.createElement('tr');
-                    const alt = wind.altitude === 0 ? 'Sfc' : (Math.round(wind.altitude / 1000) + ' K');
+                    const alt = wind.altitude === 0 ? 'SFC' : (Math.round(wind.altitude / 1000) + ' K');
                     const dir = Math.round(wind.direction);
                     const spd = Math.round(wind.speed);
                     row.innerHTML = `
@@ -1456,6 +1476,61 @@
             return L.marker([lat, lon], { icon, alt: label, interactive: false }).bindTooltip(
                 `<strong>${Math.round(oppositeDir)}° (${originDir.name}) @ ${Math.round(speed)} kt</strong>`
             );
+        }
+        
+        function getLayerSettingsKey() {
+            return 'windsAloftLayerSettings';
+        }
+
+        function loadLayerSettings() {
+            try {
+                const raw = localStorage.getItem(getLayerSettingsKey());
+                if (!raw) return null;
+                return JSON.parse(raw);
+            } catch (e) {
+                return null;
+                }
+        }
+
+        function saveLayerSettings() {
+            try {
+                const settings = {
+                    uppers: document.getElementById('uppersToggle').checked,
+                    canopy: document.getElementById('canopyToggle').checked,
+                    compass: document.getElementById('compassToggle').checked,
+                    mapTable: document.getElementById('mapTableToggle').checked,
+                    speedLabel: document.getElementById('speedLabelToggle').checked,
+                    
+                };
+                localStorage.setItem(getLayerSettingsKey(), JSON.stringify(settings));
+            } catch (e) {
+                // Silently fail if localStorage unavailable
+            }
+        }
+
+        function applyLayerSettings() {
+            const settings = loadLayerSettings();
+            if (!settings) return;
+
+            if (typeof settings.uppers === 'boolean') {
+                document.getElementById('uppersToggle').checked = settings.uppers;
+            }
+
+            if (typeof settings.canopy === 'boolean') {
+                document.getElementById('canopyToggle').checked = settings.canopy;
+            }
+
+            if (typeof settings.compass === 'boolean') {
+                document.getElementById('compassToggle').checked = settings.compass;
+            }
+            
+            if (typeof settings.mapTable === 'boolean') {
+                document.getElementById('mapTableToggle').checked = settings.mapTable;
+            }
+            
+            if (typeof settings.speedLabel === 'boolean') {
+                document.getElementById('speedLabelToggle').checked = settings.speedLabel;
+            }
         }
 
         window.addEventListener('load', initMap);
