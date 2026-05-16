@@ -395,14 +395,17 @@
             <div class="location-section">
                 <h2>Location</h2>
                 <div class="location-info" style="display: flex; gap: 8px; align-items: center;">
-                    <label>Lat: <input type="number" id="latInput" value="41.2002" step="0.0001">°</label>
-                    <label>Lon: <input type="number" id="lonInput" value="-74.6230" step="0.0001">°</label>
+                    <label>Lat: <input type="number" id="latInput" value="" step="0.0001">°</label>
+                    <label>Lon: <input type="number" id="lonInput" value="" step="0.0001">°</label>
                 </div>
-                
-                <!--<button id="updateLocationBtn" style="width: 100%; margin-top: 8px;">Update</button>-->
+
                 <div style="display: flex; gap: 8px; margin-top: 8px;">
                     <button id="updateLocationBtn" style="flex: 1;">Update</button>
                     <button id="getLocationBtn" style="flex: 1;">Get Location</button>
+                </div>
+                
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button id="pastePlusCodeBtn" style="flex: 1;">Paste Plus Code</button>
                 </div>
             </div>
 
@@ -443,6 +446,8 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/openlocationcode/latest/openlocationcode.min.js"></script>
+
     <script>
         const CARDINAL_DIRECTIONS = [
             { name: 'N', angle: 0 },
@@ -730,6 +735,23 @@
                         showStatus('Unable to get current location', 'error');
                     }
                 );
+            });
+
+            document.getElementById('pastePlusCodeBtn').addEventListener('click', async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    const { lat, lon } = await plusCodeToLatLon(text);
+
+                    document.querySelector('#latInput').value = lat.toFixed(4);
+                    document.querySelector('#lonInput').value = lon.toFixed(4);
+
+                    showStatus('Loaded plus code', 'success');
+
+                    document.getElementById('updateLocationBtn').click();
+
+                } catch (err) {
+                    showStatus(err.message, 'error');
+                }
             });
 
             document.getElementById('uppersToggle').addEventListener('change', () => {
@@ -1531,6 +1553,44 @@
             if (typeof settings.speedLabel === 'boolean') {
                 document.getElementById('speedLabelToggle').checked = settings.speedLabel;
             }
+        }
+        
+        async function plusCodeToLatLon(input) {
+            const parts = input.trim().split(/\s+/);
+            const code = parts[0].toUpperCase();
+            const locality = parts.slice(1).join(" ");
+
+            let fullCode = code;
+
+            if (OpenLocationCode.isShort(code)) {
+            
+                if (!locality) {
+                    showStatus('Short Plus Code needs city/state.', 'error');
+                    return null;
+                }
+
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(locality)}`
+                );
+                const data = await res.json();
+                if (!data.length) {
+                    showStatus('Could not find city/state.', 'error');
+                    return null;
+                }
+
+                fullCode = OpenLocationCode.recoverNearest(
+                    code,
+                    parseFloat(data[0].lat),
+                    parseFloat(data[0].lon)
+                );
+            }
+
+            const area = OpenLocationCode.decode(fullCode);
+
+            return {
+                lat: area.latitudeCenter,
+                lon: area.longitudeCenter
+            };
         }
 
         window.addEventListener('load', initMap);
