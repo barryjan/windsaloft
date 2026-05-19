@@ -817,15 +817,21 @@
             const prevBtn = document.getElementById('prevHour');
             const nextBtn = document.getElementById('nextHour');
             const updateBtn = document.getElementById('updateLocationBtn');
+            const locationBtn = document.getElementById('getLocationBtn');
+            const pasteBtn = document.getElementById('pastePlusCodeBtn');
             
             if (isFetching) {
                 prevBtn.disabled = true;
                 nextBtn.disabled = true;
                 updateBtn.disabled = true;
+                locationBtn.disabled = true;
+                pasteBtn.disabled = true;
             } else {
                 prevBtn.disabled = false;
                 nextBtn.disabled = false;
                 updateBtn.disabled = false;
+                locationBtn.disabled = false;
+                pasteBtn.disabled = false;
             }
         }
 
